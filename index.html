@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🎯 Hit28 - Live NFL Pool Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Confetti Engine -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen p-4 md:p-8">
+  <div class="max-w-4xl mx-auto space-y-6">
+    
+    <!-- Header -->
+    <header class="flex flex-col sm:flex-row items-center justify-between bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl gap-4">
+      <div>
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-2 border border-emerald-500/20">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span> Live ESPN Sync
+        </div>
+        <h1 class="text-3xl font-black text-white flex items-center gap-2">
+          🎯 HIT 28
+        </h1>
+        <p class="text-xs text-slate-400" id="leagueSubtitle">Standard Public Board</p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="bg-slate-950 px-5 py-3 rounded-xl border border-slate-800 text-right">
+          <div class="text-[10px] font-bold uppercase text-slate-400">Weekly Pot</div>
+          <div id="jackpotDisplay" class="text-2xl font-black text-amber-400">$320.00</div>
+        </div>
+        <button onclick="toggleModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-4 py-3 rounded-xl border border-slate-700 transition">
+          ⚙️ Commissioner
+        </button>
+      </div>
+    </header>
+
+    <!-- Share Banner for Commissioners -->
+    <div id="shareBanner" class="hidden bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-center justify-between text-xs">
+      <span class="text-amber-300 font-medium">📋 Share your custom league board:</span>
+      <button onclick="copyLeagueLink()" id="copyLinkBtn" class="bg-amber-500 text-slate-950 px-3 py-1.5 rounded-lg font-bold hover:bg-amber-400 transition">
+        Copy League Link
+      </button>
+    </div>
+
+    <!-- 1. Target Hit Section -->
+    <div id="targetHitContainer" class="hidden space-y-3">
+      <h2 class="text-sm font-bold text-emerald-400 tracking-wide uppercase flex items-center gap-2">
+        🏆 ON THE NUMBERS (28 PTS)
+      </h2>
+      <div id="targetHitGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+    </div>
+
+    <!-- 2. Active Sweat Zone -->
+    <div class="space-y-3">
+      <div class="flex justify-between items-center">
+        <h2 class="text-sm font-bold text-amber-400 tracking-wide uppercase">🔥 IN THE SWEAT ZONE</h2>
+        <span id="lastUpdated" class="text-[10px] text-slate-500 font-mono"></span>
+      </div>
+      <div id="sweatGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"></div>
+    </div>
+
+    <!-- 3. Busted Teams -->
+    <div class="space-y-3 pt-4 border-t border-slate-800/80">
+      <h2 class="text-xs font-bold text-rose-400 tracking-wide uppercase">💀 BUSTED (&gt;28 PTS)</h2>
+      <div id="bustedGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-2 opacity-60"></div>
+    </div>
+  </div>
+
+  <!-- Commissioner Modal -->
+  <div id="commishModal" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center">
+        <h3 class="text-lg font-black text-white">⚙️ Commissioner Control Room</h3>
+        <button onclick="toggleModal()" class="text-slate-400 hover:text-white text-lg">✕</button>
+      </div>
+      
+      <div class="space-y-4">
+        <div>
+          <label class="text-xs font-bold text-slate-400 block mb-1">League Name</label>
+          <input id="leagueNameInput" type="text" placeholder="Sunday Sweat Club" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-amber-500 font-sans" />
+        </div>
+
+        <div>
+          <label class="text-xs font-bold text-slate-400 block mb-1">Weekly Pot / Dues ($)</label>
+          <input id="potInput" type="number" value="320" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-amber-500 font-mono" />
+        </div>
+
+        <div>
+          <label class="text-xs font-bold text-slate-400 block mb-1">Player Names (1 per line)</label>
+          <textarea id="playerNamesInput" rows="5" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-amber-500 font-mono" placeholder="Dave M.&#10;Sarah T.&#10;Christian K.&#10;Alex R."></textarea>
+        </div>
+
+        <button onclick="randomizeTeams()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3 rounded-xl text-sm transition">
+          🎲 Draw & Assign 32 Teams
+        </button>
+
+        <button onclick="copyGroupChatText()" id="copyChatBtn" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 rounded-xl text-xs transition border border-slate-700">
+          📱 Copy iMessage / SMS Announcement
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const NFL_TEAMS = ['ARI','ATL','BAL','BUF','CAR','CHI','CIN','CLE','DAL','DEN','DET','GB','HOU','IND','JAX','KC','LV','LAC','LAR','MIA','MIN','NE','NO','NYG','NYJ','PHI','PIT','SF','SEA','TB','TEN','WAS'];
+    
+    let leagueData = {
+      name: 'Sunday Sweat Club',
+      pot: 320,
+      assignments: {}
+    };
+
+    let celebratedTeams = new Set();
+
+    function initLeague() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const dataParam = urlParams.get('data');
+
+      if (dataParam) {
+        try {
+          leagueData = JSON.parse(decodeURIComponent(escape(atob(dataParam))));
+          document.getElementById('shareBanner').classList.remove('hidden');
+        } catch (e) {
+          console.error("Failed to parse URL league data", e);
+        }
+      } else {
+        const local = localStorage.getItem('hit28_league');
+        if (local) {
+          leagueData = JSON.parse(local);
+          document.getElementById('shareBanner').classList.remove('hidden');
+        }
+      }
+
+      document.getElementById('leagueSubtitle').textContent = leagueData.name;
+      document.getElementById('jackpotDisplay').textContent = `$${leagueData.pot}.00`;
+      document.getElementById('leagueNameInput').value = leagueData.name;
+      document.getElementById('potInput').value = leagueData.pot;
+    }
+
+    function toggleModal() {
+      document.getElementById('commishModal').classList.toggle('hidden');
+    }
+
+    function randomizeTeams() {
+      const name = document.getElementById('leagueNameInput').value.trim() || 'Sunday Sweat Club';
+      const pot = parseInt(document.getElementById('potInput').value, 10) || 320;
+      const text = document.getElementById('playerNamesInput').value;
+      const names = text.split('\n').map(n => n.trim()).filter(Boolean);
+
+      if (!names.length) return alert('Enter at least 1 player name');
+
+      const shuffled = [...NFL_TEAMS].sort(() => Math.random() - 0.5);
+      const assignments = {};
+      shuffled.forEach((team, i) => assignments[team] = names[i % names.length]);
+
+      leagueData = { name, pot, assignments };
+      localStorage.setItem('hit28_league', JSON.stringify(leagueData));
+
+      // Encode assignments into clean URL
+      const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(leagueData))));
+      const newUrl = `${window.location.pathname}?data=${encoded}`;
+      window.history.replaceState(null, '', newUrl);
+
+      initLeague();
+      toggleModal();
+      fetchLiveScores();
+    }
+
+    function copyLeagueLink() {
+      navigator.clipboard.writeText(window.location.href);
+      const btn = document.getElementById('copyLinkBtn');
+      btn.textContent = '✅ Link Copied!';
+      setTimeout(() => btn.textContent = 'Copy League Link', 2000);
+    }
+
+    function copyGroupChatText() {
+      if (!Object.keys(leagueData.assignments).length) return alert('Please draw teams first.');
+      const list = Object.entries(leagueData.assignments).map(([team, player]) => `${team}: ${player}`).join('\n');
+      const message = `🎯 HIT 28 - ${leagueData.name}\n💰 Weekly Pot: $${leagueData.pot}\n\n🏈 Team Assignments:\n${list}\n\n📊 Live Sweat Radar:\n${window.location.href}`;
+      navigator.clipboard.writeText(message);
+      const btn = document.getElementById('copyChatBtn');
+      btn.textContent = '✅ Copied to Clipboard!';
+      setTimeout(() => btn.textContent = '📱 Copy iMessage / SMS Announcement', 2000);
+    }
+
+    async function fetchLiveScores() {
+      try {
+        const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard');
+        const data = await res.json();
+        const teams = [];
+
+        data.events?.forEach(event => {
+          const comp = event.competitions?.[0];
+          const isFinal = comp?.status?.type?.completed;
+          const clock = comp?.status?.displayClock || '';
+          const period = comp?.status?.period || 0;
+          
+          comp?.competitors?.forEach(c => {
+            teams.push({
+              abbr: c.team.abbreviation,
+              name: c.team.displayName,
+              logo: c.team.logo,
+              score: parseInt(c.score || '0', 10),
+              isFinal, clock, period
+            });
+          });
+        });
+
+        renderTeams(teams);
+        document.getElementById('lastUpdated').textContent = `Updated: ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}`;
+      } catch (err) {
+        console.error('ESPN fetch error:', err);
+      }
+    }
+
+    function triggerConfetti() {
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
+    }
+
+    function renderTeams(teams) {
+      const hits = teams.filter(t => t.score === 28);
+      const hunt = teams.filter(t => t.score < 28).sort((a,b) => b.score - a.score);
+      const bust = teams.filter(t => t.score > 28);
+
+      // Trigger Confetti for any team hitting 28
+      hits.forEach(t => {
+        if (!celebratedTeams.has(t.abbr)) {
+          celebratedTeams.add(t.abbr);
+          triggerConfetti();
+        }
+      });
+
+      // Target Hits
+      const hitContainer = document.getElementById('targetHitContainer');
+      const hitGrid = document.getElementById('targetHitGrid');
+      hitGrid.innerHTML = '';
+      if (hits.length > 0) {
+        hitContainer.classList.remove('hidden');
+        hits.forEach(t => {
+          hitGrid.innerHTML += `
+            <div class="bg-emerald-950/60 border-2 border-emerald-500 rounded-xl p-4 flex items-center justify-between shadow-lg shadow-emerald-950/50">
+              <div class="flex items-center gap-3">
+                <img src="${t.logo}" class="w-12 h-12 object-contain"/>
+                <div>
+                  <div class="text-xs font-black text-emerald-300">👑 ${leagueData.assignments[t.abbr] || 'Unassigned'}</div>
+                  <div class="font-bold text-white text-base">${t.name}</div>
+                  <div class="text-[10px] text-slate-400">${t.isFinal ? 'FINAL' : 'Q' + t.period + ' ' + t.clock}</div>
+                </div>
+              </div>
+              <div class="text-4xl font-black text-emerald-400">28</div>
+            </div>`;
+        });
+      } else {
+        hitContainer.classList.add('hidden');
+      }
+
+      // Sweat Zone
+      const sweatGrid = document.getElementById('sweatGrid');
+      sweatGrid.innerHTML = hunt.map(t => `
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 flex items-center justify-between hover:border-slate-700 transition">
+          <div class="flex items-center gap-3">
+            <img src="${t.logo}" class="w-9 h-9 object-contain"/>
+            <div>
+              <div class="text-[11px] font-bold text-amber-400">${leagueData.assignments[t.abbr] || 'Unassigned'}</div>
+              <div class="font-bold text-white text-sm">${t.abbr}</div>
+              <div class="text-[10px] text-slate-400 font-medium">Needs ${28 - t.score} pts</div>
+            </div>
+          </div>
+          <div class="text-right">
+            <div class="text-2xl font-black text-white">${t.score}</div>
+            <div class="text-[10px] text-slate-500 font-mono">${t.isFinal ? 'FINAL' : 'Q' + t.period + ' ' + t.clock}</div>
+          </div>
+        </div>
+      `).join('');
+
+      // Busted
+      const bustGrid = document.getElementById('bustedGrid');
+      bustGrid.innerHTML = bust.map(t => `
+        <div class="bg-slate-900/40 border border-rose-950/60 rounded-lg p-2 flex items-center justify-between">
+          <span class="text-xs text-slate-400 line-through font-bold">${t.abbr} <span class="text-[10px] text-slate-500">(${leagueData.assignments[t.abbr] || '-'})</span></span>
+          <span class="text-xs font-bold text-rose-500">${t.score}</span>
+        </div>
+      `).join('');
+    }
+
+    initLeague();
+    fetchLiveScores();
+    setInterval(fetchLiveScores, 15000);
+  </script>
+</body>
+</html>
