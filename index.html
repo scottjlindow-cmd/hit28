@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🎯 Hit28 - Season Pool Manager</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen p-4 md:p-8">
+  <div class="max-w-4xl mx-auto space-y-6">
+    
+    <!-- Header -->
+    <header class="flex flex-col sm:flex-row items-center justify-between bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl gap-4">
+      <div>
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-2 border border-emerald-500/20">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span> Live ESPN Sync
+        </div>
+        <h1 class="text-3xl font-black text-white flex items-center gap-2">
+          🎯 HIT 28
+        </h1>
+        <p class="text-xs text-slate-400" id="leagueTitleDisplay">Season Pool</p>
+      </div>
+
+      <!-- Controls: Week Selector, Pot, Commish -->
+      <div class="flex flex-wrap items-center gap-3">
+        <div>
+          <label class="block text-[9px] font-bold text-slate-400 uppercase">NFL Week</label>
+          <select id="weekSelector" onchange="changeWeek(this.value)" class="bg-slate-950 border border-slate-800 text-amber-400 font-bold text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500">
+            <!-- Weeks 1-18 injected via JS -->
+          </select>
+        </div>
+
+        <div class="bg-slate-950 px-4 py-2 rounded-xl border border-slate-800 text-right">
+          <div class="text-[9px] font-bold uppercase text-slate-400">Total Pot</div>
+          <div id="potDisplay" class="text-xl font-black text-amber-400">$0</div>
+        </div>
+
+        <button onclick="openCommishAuth()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-3 py-3 rounded-xl border border-slate-700 transition">
+          🔒 Commish
+        </button>
+      </div>
+    </header>
+
+    <!-- Share Banner -->
+    <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between text-xs gap-2">
+      <span class="text-amber-300 font-medium">📋 Share your league board with members:</span>
+      <div class="flex gap-2">
+        <button onclick="copyLeagueLink()" id="copyLinkBtn" class="bg-amber-500 text-slate-950 px-3 py-1.5 rounded-lg font-bold hover:bg-amber-400 transition">
+          Copy Link
+        </button>
+        <button onclick="copyWeeklyRosterText()" id="copyChatBtn" class="bg-slate-800 text-slate-200 px-3 py-1.5 rounded-lg font-bold hover:bg-slate-700 transition">
+          Copy iMessage Roster
+        </button>
+      </div>
+    </div>
+
+    <!-- 1. Target Hit Section (28 Points) -->
+    <div id="targetHitContainer" class="hidden space-y-3">
+      <h2 class="text-sm font-bold text-emerald-400 tracking-wide uppercase flex items-center gap-2">
+        🏆 TARGET HIT (28 PTS) - WINNER!
+      </h2>
+      <div id="targetHitGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+    </div>
+
+    <!-- 2. Active Sweat Zone -->
+    <div class="space-y-3">
+      <div class="flex justify-between items-center">
+        <h2 class="text-sm font-bold text-amber-400 tracking-wide uppercase">🔥 IN THE SWEAT ZONE</h2>
+        <span id="lastUpdated" class="text-[10px] text-slate-500 font-mono"></span>
+      </div>
+      <div id="sweatGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"></div>
+    </div>
+
+    <!-- 3. Busted Teams -->
+    <div class="space-y-3 pt-4 border-t border-slate-800/80">
+      <h2 class="text-xs font-bold text-rose-400 tracking-wide uppercase">💀 BUSTED (>28 PTS)</h2>
+      <div id="bustedGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-2 opacity-60"></div>
+    </div>
+  </div>
+
+  <!-- Commissioner Sign-In PIN Modal -->
+  <div id="pinModal" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xs p-6 space-y-4 text-center">
+      <h3 class="text-lg font-black text-white">🔒 Commissioner PIN</h3>
+      <p class="text-xs text-slate-400">Enter your 4-digit PIN to manage settings.</p>
+      <input id="commishPinInput" type="password" maxlength="4" placeholder="••••" class="w-full text-center tracking-widest text-2xl bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500 font-mono" />
+      <div class="flex gap-2">
+        <button onclick="closePinModal()" class="w-1/2 bg-slate-800 text-slate-300 font-bold py-2 rounded-xl text-xs">Cancel</button>
+        <button onclick="verifyPin()" class="w-1/2 bg-amber-500 text-slate-950 font-black py-2 rounded-xl text-xs">Unlock</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Commissioner Season Dashboard Modal -->
+  <div id="commishDashboardModal" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center">
+        <h3 class="text-lg font-black text-white">⚙️ Season League Setup</h3>
+        <button onclick="closeDashboardModal()" class="text-slate-400 hover:text-white text-lg">✕</button>
+      </div>
+      
+      <div class="space-y-4">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">League Name</label>
+            <input id="cfgLeagueName" type="text" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white" />
+          </div>
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Weekly Entry Fee ($)</label>
+            <input id="cfgWeeklyDues" type="number" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-mono" />
+          </div>
+        </div>
+
+        <div>
+          <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Commissioner 4-Digit PIN</label>
+          <input id="cfgPin" type="password" maxlength="4" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-mono" />
+        </div>
+
+        <div>
+          <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Player Names (1 per line - Locked for Season)</label>
+          <textarea id="cfgPlayers" rows="5" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white font-mono" placeholder="Dave M.&#10;Sarah T.&#10;Christian K.&#10;Coach K."></textarea>
+        </div>
+
+        <button onclick="generateSeasonSchedule()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3 rounded-xl text-xs transition">
+          🎲 Generate / Re-roll Full Season (Weeks 1–18)
+        </button>
+
+        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
+          <div class="text-[10px] font-bold text-slate-400 uppercase">Season Schedule Status</div>
+          <div id="scheduleStatusText" class="text-xs text-emerald-400 font-bold">No schedule generated yet.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const NFL_TEAMS = ['ARI','ATL','BAL','BUF','CAR','CHI','CIN','CLE','DAL','DEN','DET','GB','HOU','IND','JAX','KC','LV','LAC','LAR','MIA','MIN','NE','NO','NYG','NYJ','PHI','PIT','SF','SEA','TB','TEN','WAS'];
+    
+    // Default Schema
+    let state = {
+      name: "Sunday Sweat 28 Club",
+      pin: "1234",
+      weeklyDues: 320,
+      activeWeek: 1,
+      players: ["Dave M.", "Sarah T.", "Christian K.", "Alex R."],
+      rolloverPot: 0, // Carried-over balance
+      schedule: {}    // weekNum -> { TEAM_ABBR: PlayerName }
+    };
+
+    let celebratedTeams = new Set();
+
+    function init() {
+      // Build 18-week dropdown
+      const sel = document.getElementById('weekSelector');
+      sel.innerHTML = '';
+      for(let w = 1; w <= 18; w++) {
+        const opt = document.createElement('option');
+        opt.value = w;
+        opt.textContent = `Week ${w}`;
+        sel.appendChild(opt);
+      }
+
+      // Check URL query data, fallback to local storage
+      const urlParams = new URLSearchParams(window.location.search);
+      const dataParam = urlParams.get('state');
+
+      if (dataParam) {
+        try {
+          state = JSON.parse(decodeURIComponent(escape(atob(dataParam))));
+        } catch(e) { console.error("URL state parse error", e); }
+      } else {
+        const local = localStorage.getItem('hit28_season_state');
+        if (local) state = JSON.parse(local);
+      }
+
+      // If no schedule exists, auto-generate initial
+      if (!state.schedule || Object.keys(state.schedule).length === 0) {
+        buildSeasonSchedule();
+      }
+
+      sel.value = state.activeWeek;
+      updateUI();
+      fetchLiveScores();
+    }
+
+    function saveState() {
+      localStorage.setItem('hit28_season_state', JSON.stringify(state));
+      const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(state))));
+      const newUrl = `${window.location.pathname}?state=${encoded}`;
+      window.history.replaceState(null, '', newUrl);
+    }
+
+    function updateUI() {
+      document.getElementById('leagueTitleDisplay').textContent = state.name;
+      const currentPot = Number(state.weeklyDues) + Number(state.rolloverPot);
+      document.getElementById('potDisplay').textContent = `$${currentPot}`;
+      
+      const count = Object.keys(state.schedule || {}).length;
+      document.getElementById('scheduleStatusText').textContent = count > 0 
+        ? `✅ 18-Week Schedule Active for ${state.players.length} players.`
+        : `⚠️ No schedule generated.`;
+    }
+
+    function changeWeek(weekNum) {
+      state.activeWeek = parseInt(weekNum, 10);
+      saveState();
+      fetchLiveScores();
+    }
+
+    // Season Randomizer Algorithm (Ensures fair distribution across 18 weeks)
+    function buildSeasonSchedule() {
+      state.schedule = {};
+      const numPlayers = state.players.length;
+      if (numPlayers === 0) return;
+
+      for (let w = 1; w <= 18; w++) {
+        // Shift shuffle seed by week
+        const shuffled = [...NFL_TEAMS].sort(() => Math.random() - 0.5);
+        state.schedule[w] = {};
+        shuffled.forEach((team, idx) => {
+          state.schedule[w][team] = state.players[(idx + (w * 3)) % numPlayers];
+        });
+      }
+    }
+
+    // Commissioner PIN & Modals
+    function openCommishAuth() {
+      document.getElementById('pinModal').classList.remove('hidden');
+      document.getElementById('commishPinInput').value = '';
+    }
+    function closePinModal() {
+      document.getElementById('pinModal').classList.add('hidden');
+    }
+    function verifyPin() {
+      const pin = document.getElementById('commishPinInput').value;
+      if (pin === state.pin) {
+        closePinModal();
+        openDashboard();
+      } else {
+        alert('Invalid PIN');
+      }
+    }
+
+    function openDashboard() {
+      document.getElementById('cfgLeagueName').value = state.name;
+      document.getElementById('cfgWeeklyDues').value = state.weeklyDues;
+      document.getElementById('cfgPin').value = state.pin;
+      document.getElementById('cfgPlayers').value = state.players.join('\n');
+      document.getElementById('commishDashboardModal').classList.remove('hidden');
+    }
+
+    function closeDashboardModal() {
+      document.getElementById('commishDashboardModal').classList.add('hidden');
+    }
+
+    function generateSeasonSchedule() {
+      const name = document.getElementById('cfgLeagueName').value.trim() || 'Sunday Sweat 28 Club';
+      const dues = parseInt(document.getElementById('cfgWeeklyDues').value, 10) || 320;
+      const pin = document.getElementById('cfgPin').value || '1234';
+      const rawPlayers = document.getElementById('cfgPlayers').value.split('\n').map(n => n.trim()).filter(Boolean);
+
+      if (rawPlayers.length === 0) return alert('Enter at least 1 player');
+
+      state.name = name;
+      state.weeklyDues = dues;
+      state.pin = pin;
+      state.players = rawPlayers;
+
+      buildSeasonSchedule();
+      saveState();
+      updateUI();
+      closeDashboardModal();
+      fetchLiveScores();
+    }
+
+    function copyLeagueLink() {
+      navigator.clipboard.writeText(window.location.href);
+      const btn = document.getElementById('copyLinkBtn');
+      btn.textContent = '✅ Copied!';
+      setTimeout(() => btn.textContent = 'Copy Link', 2000);
+    }
+
+    function copyWeeklyRosterText() {
+      const weekAssignments = state.schedule[state.activeWeek] || {};
+      const list = Object.entries(weekAssignments).map(([team, player]) => `${team}: ${player}`).join('\n');
+      const pot = Number(state.weeklyDues) + Number(state.rolloverPot);
+      const msg = `🎯 HIT 28 - ${state.name} (Week ${state.activeWeek})\n💰 Current Pot: $${pot}\n\n🏈 Assigned Teams:\n${list}\n\n📊 Live Sweat Radar:\n${window.location.href}`;
+      navigator.clipboard.writeText(msg);
+      const btn = document.getElementById('copyChatBtn');
+      btn.textContent = '✅ Copied!';
+      setTimeout(() => btn.textContent = 'Copy iMessage Roster', 2000);
+    }
+
+    // ESPN Sync & Rollover Evaluation
+    async function fetchLiveScores() {
+      try {
+        const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=${state.activeWeek}`);
+        const data = await res.json();
+        const teams = [];
+        let allGamesFinal = true;
+        let gamesFound = 0;
+
+        data.events?.forEach(event => {
+          gamesFound++;
+          const comp = event.competitions?.[0];
+          const isFinal = comp?.status?.type?.completed;
+          if (!isFinal) allGamesFinal = false;
+
+          const clock = comp?.status?.displayClock || '';
+          const period = comp?.status?.period || 0;
+          
+          comp?.competitors?.forEach(c => {
+            teams.push({
+              abbr: c.team.abbreviation,
+              name: c.team.displayName,
+              logo: c.team.logo,
+              score: parseInt(c.score || '0', 10),
+              isFinal, clock, period
+            });
+          });
+        });
+
+        renderTeams(teams);
+        document.getElementById('lastUpdated').textContent = `Sync: ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}`;
+
+        // Auto Rollover Check: If all games are complete & 0 hits, mark rollover
+        if (gamesFound > 0 && allGamesFinal) {
+          const hits = teams.filter(t => t.score === 28);
+          if (hits.length === 0 && state.rolloverPot === 0) {
+            // Pot rolls over for future weeks
+            state.rolloverPot += state.weeklyDues;
+            saveState();
+            updateUI();
+          }
+        }
+      } catch (err) {
+        console.error('ESPN fetch error:', err);
+      }
+    }
+
+    function renderTeams(teams) {
+      const weekAssignments = state.schedule[state.activeWeek] || {};
+      const hits = teams.filter(t => t.score === 28);
+      const hunt = teams.filter(t => t.score < 28).sort((a,b) => b.score - a.score);
+      const bust = teams.filter(t => t.score > 28);
+
+      if (hits.length > 0) {
+        hits.forEach(t => {
+          if (!celebratedTeams.has(t.abbr)) {
+            celebratedTeams.add(t.abbr);
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+          }
+        });
+      }
+
+      // Hits
+      const hitContainer = document.getElementById('targetHitContainer');
+      const hitGrid = document.getElementById('targetHitGrid');
+      hitGrid.innerHTML = '';
+      if (hits.length > 0) {
+        hitContainer.classList.remove('hidden');
+        hits.forEach(t => {
+          hitGrid.innerHTML += `
+            <div class="bg-emerald-950/60 border-2 border-emerald-500 rounded-xl p-4 flex items-center justify-between shadow-lg shadow-emerald-950/50">
+              <div class="flex items-center gap-3">
+                <img src="${t.logo}" class="w-12 h-12 object-contain"/>
+                <div>
+                  <div class="text-xs font-black text-emerald-300">👑 ${weekAssignments[t.abbr] || 'Unassigned'}</div>
+                  <div class="font-bold text-white text-base">${t.name}</div>
+                  <div class="text-[10px] text-slate-400">${t.isFinal ? 'FINAL' : 'Q' + t.period + ' ' + t.clock}</div>
+                </div>
+              </div>
+              <div class="text-4xl font-black text-emerald-400">28</div>
+            </div>`;
+        });
+      } else {
+        hitContainer.classList.add('hidden');
+      }
+
+      // Hunt
+      const sweatGrid = document.getElementById('sweatGrid');
+      sweatGrid.innerHTML = hunt.map(t => `
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 flex items-center justify-between hover:border-slate-700 transition">
+          <div class="flex items-center gap-3">
+            <img src="${t.logo}" class="w-9 h-9 object-contain"/>
+            <div>
+              <div class="text-[11px] font-bold text-amber-400">${weekAssignments[t.abbr] || 'Unassigned'}</div>
+              <div class="font-bold text-white text-sm">${t.abbr}</div>
+              <div class="text-[10px] text-slate-400 font-medium">Needs ${28 - t.score} pts</div>
+            </div>
+          </div>
+          <div class="text-right">
+            <div class="text-2xl font-black text-white">${t.score}</div>
+            <div class="text-[10px] text-slate-500 font-mono">${t.isFinal ? 'FINAL' : 'Q' + t.period + ' ' + t.clock}</div>
+          </div>
+        </div>
+      `).join('');
+
+      // Busted
+      const bustGrid = document.getElementById('bustedGrid');
+      bustGrid.innerHTML = bust.map(t => `
+        <div class="bg-slate-900/40 border border-rose-950/60 rounded-lg p-2 flex items-center justify-between">
+          <span class="text-xs text-slate-400 line-through font-bold">${t.abbr} <span class="text-[10px] text-slate-500">(${weekAssignments[t.abbr] || '-'})</span></span>
+          <span class="text-xs font-bold text-rose-500">${t.score}</span>
+        </div>
+      `).join('');
+    }
+
+    init();
+    setInterval(fetchLiveScores, 15000);
+  </script>
+</body>
+</html>
